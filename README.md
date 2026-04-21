@@ -46,6 +46,25 @@ sudo apt install -y \
 pip install numpy scipy torch
 ```
 
+## RealSense Camera Config
+
+Pre-tuned camera parameter files are included in `realsense/`:
+
+| File | Mode | Description |
+|------|------|-------------|
+| `realsense/realsense_params.yaml` | RGBD | Color + aligned depth at 640×480@30fps |
+| `realsense/realsense_vio_params.yaml` | VIO | Stereo IR + IMU + depth, emitter OFF for clean features |
+
+```bash
+# RGBD mode
+ros2 launch realsense2_camera rs_launch.py \
+  config_file:=~/legged_robot/cuvslam_ros2/realsense/realsense_params.yaml
+
+# VIO mode (requires USB 3.x)
+ros2 launch realsense2_camera rs_launch.py \
+  config_file:=~/legged_robot/cuvslam_ros2/realsense/realsense_vio_params.yaml
+```
+
 ## Quick Start
 
 ### 1. Visual Odometry Test
@@ -84,9 +103,30 @@ ros2 launch ~/legged_robot/cuvslam_ros2/navigation_with_cuvslam.launch.py
 | `start_nvblox_mapping.sh` | Quick-start script for nvblox mapping |
 | `fastdds_no_shm.xml` | FastDDS config to disable shared memory (for stability) |
 | `test_cuvslam_standalone.py` | Standalone cuVSLAM API test (no ROS) |
+| `realsense/realsense_params.yaml` | RealSense config for RGBD mode |
+| `realsense/realsense_vio_params.yaml` | RealSense config for VIO mode (stereo IR + IMU) |
+
+## Integration with ReMEmbR Memory System
+
+This vision navigation stack can be combined with the
+[ReMEmbR](https://github.com/tommywu052/remembr) memory system to enable
+**voice-driven navigation from spatial memory**.
+
+The full pipeline:
+
+```
+RealSense ──→ cuVSLAM (this repo)  ──→ map→odom TF + visual odometry
+           ──→ nvblox (this repo)   ──→ occupancy grid for Nav2
+           ──→ ReMEmbR captioner    ──→ scene captions + embedding → Milvus Lite
+           ──→ xiaozhi voice agent  ──→ "帶我去廚房" → memory search → Nav2 goal
+```
+
+See the full demo and setup instructions:
+[remembr/examples/wheeled_legged_demo/README.md](https://github.com/tommywu052/remembr/blob/main/examples/wheeled_legged_demo/README.md)
 
 ## Related Repos
 
 - [wheeled_legged_robot](https://github.com/tommywu052/wheeled_legged_robot) — Main robot repo (ROS 2 packages, URDF, LiDAR navigation)
 - [cuVSLAM](https://github.com/tommywu052/cuVSLAM) — NVIDIA visual SLAM library
 - [nvblox](https://github.com/tommywu052/nvblox) — NVIDIA GPU-accelerated 3D reconstruction
+- [remembr](https://github.com/tommywu052/remembr) — Spatial memory + voice-driven navigation (wheeled_legged_demo)

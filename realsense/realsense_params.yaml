@@ -1,0 +1,15 @@
+enable_color: true
+enable_depth: true
+align_depth.enable: true
+
+pointcloud__neon_.enable: true
+pointcloud__neon_.allow_no_texture_points: true
+pointcloud__neon_.stream_filter: 2
+pointcloud__neon_.stream_index_filter: 0
+
+
+# ========== 性能优化：提高帧率 ==========
+# 彩色相机配置 (用于姿态检测) Uncomment 提高FPS
+rgb_camera.color_profile: "640,480,30"  # 30 FPS (从默认 15 FPS 提升)
+# 深度相机配置 (用于高度测量)
+depth_module.depth_profile: "640,480,30"  # 30 FPS

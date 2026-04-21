@@ -1,0 +1,33 @@
+# RealSense D435I parameters for VIO mode (Visual-Inertial Odometry)
+# cuVSLAM Inertial mode: stereo IR + IMU
+# NOTE: Requires USB 3.x for full bandwidth. USB 2.1 may need lower resolution.
+
+# Stereo IR for VIO tracking
+enable_infra1: true
+enable_infra2: true
+
+# Keep depth for Nav2 obstacle detection (passive stereo, quality reduced with emitter OFF)
+enable_depth: true
+enable_color: true
+align_depth.enable: true
+
+# Disable IR emitter for clean stereo features (required for VIO)
+depth_module.emitter_enabled: 0
+
+# IR profile
+depth_module.infra_profile: "640,480,30"
+depth_module.depth_profile: "640,480,30"
+rgb_camera.color_profile: "640,480,30"
+
+# IMU streams
+enable_accel: true
+enable_gyro: true
+gyro_fps: 200
+accel_fps: 200
+unite_imu_method: 2  # Combine accel+gyro into single /camera/camera/imu topic
+
+# PointCloud for Nav2 costmap
+pointcloud.enable: true
+pointcloud.allow_no_texture_points: true
+pointcloud.stream_filter: 2
+pointcloud.stream_index_filter: 0
