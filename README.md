@@ -67,7 +67,30 @@ ros2 launch realsense2_camera rs_launch.py \
 
 ## Quick Start
 
-### 1. Visual Odometry Test
+### Full Navigation (step-by-step)
+
+Each step runs in its own terminal. **Steps 1–2 must be started before step 3.**
+
+```bash
+# Terminal 1: RealSense camera
+ros2 launch realsense2_camera rs_launch.py \
+    config_file:=/home/robotester1/legged_robot/cuvslam_ros2/realsense/realsense_params.yaml
+
+# Terminal 2: Robot base driver
+ros2 run wheeled_legged_pkg wl_base_node \
+    --ros-args -p serial_port:=/dev/robot_base -p auto_select:=true
+
+# Terminal 3: Navigation (cuVSLAM + Nav2)
+ros2 launch ~/legged_robot/cuvslam_ros2/navigation_with_cuvslam.launch.py \
+    map:=/home/robotester1/maps/nvblox_map.yaml
+
+# Step 4: In RViz, click "2D Goal Pose" → robot navigates autonomously
+```
+
+> **Important:** Do NOT clean `/dev/shm` while nodes are running — this will
+> break DDS shared-memory communication for all active ROS 2 nodes.
+
+### Visual Odometry Test (quick)
 
 ```bash
 # Prerequisites: start RealSense camera + wl_base_node first
@@ -75,19 +98,12 @@ ros2 launch realsense2_camera rs_launch.py \
 ./start_cuvslam_test.sh --vio    # VIO mode (stereo IR + IMU, requires USB 3.x)
 ```
 
-### 2. Nvblox Mapping (build occupancy grid)
+### Nvblox Mapping (build occupancy grid)
 
 ```bash
 bash start_nvblox_mapping.sh
 # Drive around, then save:
 ros2 service call /nvblox/save_map std_srvs/srv/Trigger
-```
-
-### 3. Full Navigation
-
-```bash
-ros2 launch ~/legged_robot/cuvslam_ros2/navigation_with_cuvslam.launch.py
-# Use RViz "2D Goal Pose" to send navigation goals
 ```
 
 ## File Overview
