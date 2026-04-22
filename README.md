@@ -5,9 +5,9 @@ No LiDAR required — only an Intel RealSense depth camera.
 
 ## Demo
 
-[![cuVSLAM + Nvblox Navigation Demo](media/cuvslam_nvblox_preview.jpg)](media/cuvslam_nvblox.mp4)
-
-> *Click the image above to play the demo video (87s)*
+<video src="https://github.com/tommywu052/cuvslam_ros2/raw/main/media/cuvslam_nvblox.mp4" controls poster="media/cuvslam_nvblox_preview.jpg" width="100%">
+  Your browser does not support the video tag. <a href="media/cuvslam_nvblox.mp4">Download video</a>
+</video>
 
 Autonomous navigation using cuVSLAM visual odometry + Nvblox real-time 3D reconstruction.
 The robot localizes with RGBD visual SLAM, builds a live color mesh and ESDF distance field,
