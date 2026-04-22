@@ -3,12 +3,25 @@
 Pure-vision navigation stack using NVIDIA cuVSLAM and nvblox on ROS 2 Humble.
 No LiDAR required — only an Intel RealSense depth camera.
 
+## Demo
+
+https://github.com/user-attachments/assets/cuvslam_nvblox.mp4
+
+📹 [media/cuvslam_nvblox.mp4](media/cuvslam_nvblox.mp4)
+
+Autonomous navigation using cuVSLAM visual odometry + Nvblox real-time 3D reconstruction.
+The robot localizes with RGBD visual SLAM, builds a live color mesh and ESDF distance field,
+and navigates to goal poses set in RViz — all from a single RealSense D435i camera.
+
 ## Features
 
-- **Visual Odometry** (`cuvslam_odom_node.py`) — RGBD or VIO (stereo IR + IMU) mode
-- **3D Mapping** (`nvblox_mapper_node.py`) — Real-time occupancy grid from depth images
+- **Visual Odometry** (`cuvslam_odom_node.py`) — RGBD or VIO (stereo IR + IMU) mode with ground constraint (Z/pitch/roll locked to 0)
+- **3D Mapping** (`nvblox_mapper_node.py`) — Real-time TSDF/ESDF/color mesh from depth images
+- **ESDF Costmap** — Binary obstacle detection (≤0.15m = occupied) fed to Nav2 inflation layer for smooth cost gradients
 - **Nav2 Navigation** (`navigation_with_cuvslam.launch.py`) — Full autonomous navigation with cuVSLAM localization
 - **Mapping Launch** (`nvblox_mapping.launch.py`) — Drive-around mapping without LiDAR
+- **Robust TF** — Auto-fallback for `odom→base_link` if wheel odometry node disconnects
+- **Auto Relocalization** — Automatically relocalize in saved cuVSLAM map on startup
 
 ## Hardware
 
@@ -81,14 +94,28 @@ ros2 run wheeled_legged_pkg wl_base_node \
     --ros-args -p serial_port:=/dev/robot_base -p auto_select:=true
 
 # Terminal 3: Navigation (cuVSLAM + Nav2)
+# ⚠️ map:= must use absolute path (~ is not expanded by nav2_map_server)
 ros2 launch ~/legged_robot/cuvslam_ros2/navigation_with_cuvslam.launch.py \
     map:=/home/robotester1/maps/nvblox_map.yaml
 
 # Step 4: In RViz, click "2D Goal Pose" → robot navigates autonomously
 ```
 
-> **Important:** Do NOT clean `/dev/shm` while nodes are running — this will
-> break DDS shared-memory communication for all active ROS 2 nodes.
+Optional: load a pre-saved nvblox 3D map (gives instant color mesh, but may have Z drift):
+
+```bash
+ros2 launch ~/legged_robot/cuvslam_ros2/navigation_with_cuvslam.launch.py \
+    map:=/home/robotester1/maps/nvblox_map.yaml \
+    nvblox_map:=/home/robotester1/maps/nvblox_map.nvblox
+```
+
+> **Important — DDS Shared Memory:**
+> - Do NOT clean `/dev/shm` while nodes are running — this breaks DDS communication for all active ROS 2 nodes.
+> - If Nav2 nodes get stuck in `unconfigured` state (e.g. `Failed init_port fastrtps_port`), stale lock files have accumulated. Fix: `pkill -9 -f nav2 && rm -f /dev/shm/fastrtps_*`, then restart **all** nodes (including camera and base).
+> - This is a lock file exhaustion issue, not a RAM problem.
+>
+> **Important — Map YAML paths:**
+> - The `image:` field in map `.yaml` files must use **absolute paths** (e.g. `/home/robotester1/maps/nvblox_map.pgm`). The `~` shorthand is not expanded by nav2_map_server's C++ code.
 
 ### Visual Odometry Test (quick)
 
@@ -121,6 +148,35 @@ ros2 service call /nvblox/save_map std_srvs/srv/Trigger
 | `test_cuvslam_standalone.py` | Standalone cuVSLAM API test (no ROS) |
 | `realsense/realsense_params.yaml` | RealSense config for RGBD mode |
 | `realsense/realsense_vio_params.yaml` | RealSense config for VIO mode (stereo IR + IMU) |
+
+## Architecture
+
+```
+RealSense RGB+Depth ──→ cuVSLAM (RGBD) ──→ TF: map→odom (visual localization)
+                    ──→ Nvblox mapper   ──→ TSDF → ESDF costmap (3D obstacle avoidance)
+                                        ──→ /nvblox/color_mesh  (live 3D color reconstruction)
+                    ──→ Nav2 VoxelLayer ──→ real-time point cloud obstacles
+
+wl_base_node ──→ TF: odom→base_link (with auto-fallback if disconnected)
+```
+
+### Nav2 Costmap Layers (local_costmap)
+
+| Layer | Source | Role |
+|-------|--------|------|
+| `voxel_layer` | RealSense PointCloud2 | Real-time obstacle detection within camera FOV |
+| `esdf_layer` | Nvblox ESDF costmap | Persistent 3D distance field, multi-height sampling |
+| `inflation_layer` | Nav2 built-in | Exponential cost decay around obstacles |
+
+### ESDF Costmap Output
+
+Nvblox outputs **binary** ESDF costs; Nav2's inflation layer handles the gradient:
+
+| Distance | Cost | Meaning |
+|----------|------|---------|
+| ≤ 0.15 m | 100 | Obstacle (within 15cm of surface) |
+| > 0.15 m | 0 | Free space |
+| Unobserved | -1 | Unknown |
 
 ## Integration with ReMEmbR Memory System
 
